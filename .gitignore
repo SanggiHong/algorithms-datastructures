@@ -45,3 +45,6 @@
 *.filters
 *.user
 *.txt
+
+**/.idea/
+**/venv/
