@@ -28,13 +28,21 @@ for r in range(R):
     for c in range(C):
         mat[r][c] = int(a[c])
 
-ans = list()
-arr = list()
+ans = R * C
+sub_mat = list()
+
 for r in range(H - 1, R):
     for c in range(W - 1, C):
-        arr.clear()
+        sub_mat.clear()
+        exist_smaller = False
         for item in mat[r - H + 1:r + 1]:
-            arr.extend(item[c - W + 1:c + 1])
-        ans.append(find_rank(H * W // 2, arr))
+            for number in item[c - W + 1:c + 1]:
+                sub_mat.append(number)
+                if number < ans:
+                    exist_smaller = True
+        if exist_smaller:
+            minimum = find_rank(H * W // 2, sub_mat)
+            if minimum < ans:
+                ans = minimum
 
-print(min(ans))
+print(ans)
