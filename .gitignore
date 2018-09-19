@@ -31,6 +31,7 @@
 *.out
 *.app
 
+# VisualStudio files
 *.suo
 *.db
 *.ipch
@@ -46,5 +47,6 @@
 *.user
 *.txt
 
+# Pycharm files
 **/.idea/
 **/venv/
