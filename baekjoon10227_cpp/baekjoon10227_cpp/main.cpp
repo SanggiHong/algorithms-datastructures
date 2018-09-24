@@ -32,15 +32,6 @@ int main() {
 			}
 		}
 
-		for (int r = 1; r <= R; r++)
-		{
-			for (int c = 1; c <= C; c++)
-			{
-				find_median_map[r][c] = (matrix[r][c] == pivot ? 0 : matrix[r][c] < pivot ? -1 : 1);
-				find_median_map[r][c] = find_median_map[r][c - 1] + find_median_map[r][c] - find_median_map[r - 1][c - 1] + find_median_map[r - 1][c];
-			}
-		}
-
 		for (int r = H; r <= R; r++)
 		{
 			for (int c = W; c <= C; c++)
