@@ -1,109 +1,103 @@
-#include<iostream>
-#include<vector>
+#include <iostream>
+#include <vector>
+#include <queue>
 
-#define MAT(x,y) arr[size*(x-1)+(y-1)]
-
-struct answer {
-	std::vector<int> nodes;
-	int total_cost;
+struct item {
+	int number;
+	int cost;
 };
 
-int* arr;
-int size;
+std::vector<item> graph[100001];
+bool visit[100001];
 
-answer get_answer_highway(int parent_number, int node_number, int cost) {
-	answer max_cost_answer;
-	answer temp;
+item find_farthest(int start) {
+	std::queue<item> queue;
+	item answer = { 0 };
+	item temp;
+	
+	for (int i = 1; i <= 100000; i++)
+		visit[i] = false;
 
-	int connected = 0;
-	max_cost_answer.total_cost = 0;
-	max_cost_answer.nodes.clear();
-
-	for (int i = 1; i <= size; i++)
+	visit[start] = true;
+	temp.number = start;
+	temp.cost = 0;
+	queue.push(temp);
+	while (!queue.empty())
 	{
-		if (i != parent_number && MAT(node_number, i) != -1)
+		if (answer.cost < queue.front().cost)
 		{
-			connected = connected + 1;
-			temp = get_answer_highway(node_number, i, MAT(node_number, i));
-			if (temp.total_cost > max_cost_answer.total_cost)
-				max_cost_answer = temp;
+			answer.cost = queue.front().cost;
+			answer.number = queue.front().number;
 		}
+
+		for (unsigned int i = 0; i < graph[queue.front().number].size(); i++)
+		{
+			temp = graph[queue.front().number].at(i);
+			if (!visit[temp.number])
+			{
+				visit[temp.number] = true;
+				temp.cost = temp.cost + queue.front().cost;
+				queue.push(temp);
+			}
+		}
+
+		queue.pop();
 	}
 
-	max_cost_answer.total_cost = max_cost_answer.total_cost + cost;
-	max_cost_answer.nodes.push_back(node_number);
-	return max_cost_answer;
+	return answer;
 }
 
-int get_cost_to_highway(int parent_number, int node_number, int cost, const answer answer_highway) {
-	for (unsigned int i = 0; i < answer_highway.nodes.size(); i++)
+bool set_route(int x, int y, int pre)
+{
+	if (x == y)
+		return true;
+
+	for (unsigned int i = 0; i < graph[x].size(); i++)
 	{
-		if (node_number == answer_highway.nodes.at(i))
-			return 0;
-	}
-	int max_cost = 0;
-	int temp;
-	for (int i = 1; i <= size; i++)
-	{
-		if (i != parent_number && MAT(node_number, i) != -1)
+		if (graph[x].at(i).number != pre && set_route(graph[x].at(i).number, y, x))
 		{
-			temp = get_cost_to_highway(node_number, i, MAT(node_number, i), answer_highway);
-			if (max_cost < temp)
-				max_cost = temp;
+			graph[x].at(i).cost = 0;
+			return true;
 		}
 	}
 
-	return max_cost + cost;
-
+	return false;
 }
 
 int main() {
-	std::cin >> size;
-	arr = new int[size * size];
-	for (int i = 0; i < size * size; i++)
-		arr[i] = -1;
-
-	int a, b, c;
-	for (int i = 0; i < size - 1; i++)
+	int a, b, c, size;
+	int x, y;
+	item answer;
+	item temp;
+	while (true)
 	{
-		std::cin >> a >> b >> c;
-		MAT(a, b) = c;
-		MAT(b, a) = c;
-	}
-	std::cin >> a;
+		std::cin >> size;
+		if (size == 0)
+			break;
 
-	answer highway;
-	answer temp_answer;
-	for (int i = 1; i <= size; i++)
-	{
-		int connected_node = 0;
-		for (int j = 1; j <= size; j++)
+		for (int i = 0; i < size - 1; i++)
 		{
-			if (MAT(i, j) != -1)
-				connected_node = connected_node + 1;
-		}
-		
-		if (connected_node <= 1)
-		{
-			temp_answer = get_answer_highway(-1, i, 0);
-			if (temp_answer.total_cost > highway.total_cost)
-				highway = temp_answer;
-		}
-	}
+			std::cin >> a >> b >> c;
+			temp.number = b;
+			temp.cost = c;
+			graph[a].push_back(temp);
 
-	int cost = 0;
-	int temp_cost;
-	for (unsigned int i = 0; i < highway.nodes.size(); i++) {
-		for (int j = 1; j <= size; j++) {
-			if (MAT(highway.nodes.at(i), j) != -1)
-			{
-				temp_cost = get_cost_to_highway(highway.nodes.at(i), j, MAT(highway.nodes.at(i), j), highway);
-				if (cost < temp_cost)
-					cost = temp_cost;
-			}
+			temp.number = a;
+			temp.cost = c;
+			graph[b].push_back(temp);
 		}
+
+		x = find_farthest(1).number;
+		y = find_farthest(x).number;
+
+		set_route(x, y, 0);
+		set_route(y, x, 0);
+
+		answer = find_farthest(x);
+
+		std::cout << answer.cost << '\n';
+
+		for (int i = 1; i <= size; i++)
+			graph[i].clear();
 	}
-	
-	std::cout << cost;
-	return 0;
 }
