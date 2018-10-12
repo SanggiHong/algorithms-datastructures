@@ -3,108 +3,153 @@ import java.io.InputStreamReader;
 import java.util.*;
 
 public class Main {
-    private static int[] salary;
-    private static int[] min;
-    private static int[] max;
+    private static Range[] ranges;
     private static List<Integer>[] subordinates;
-    private static int[] supervisors;
+    private static MinMax[] segmentTree;
+    private static int[] remainder;
+    private static int leaf;
 
     public static void main(String[] args) throws Exception {
-        BufferedReader reader = new BufferedReader(
-                new InputStreamReader(System.in));
-        StringTokenizer tokens = new StringTokenizer(reader.readLine());
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        StringTokenizer tokens;
+
+        tokens = new StringTokenizer(reader.readLine());
         int company = Integer.parseInt(tokens.nextToken());
-        for (int i = 0; i < company; i++) {
+
+        while (0 < company--) {
             tokens = new StringTokenizer(reader.readLine());
             int N = Integer.parseInt(tokens.nextToken());
-            salary = new int[N + 1];
-            min = new int[N + 1];
-            max = new int[N + 1];
-            subordinates = new List[N + 1];
-            supervisors = new int[N + 1];
 
-            for (int j = 1; j <= N; j++)
-                subordinates[j] = new LinkedList<>();
+            subordinates = new List[N + 1];
+
+            for (int i = 1; i <= N; i++)
+                subordinates[i] = new LinkedList<>();
 
             tokens = new StringTokenizer(reader.readLine());
-            for (int j = 2; j <= N; j++) {
-                int number = Integer.parseInt(tokens.nextToken());
-                subordinates[number].add(j);
-                supervisors[j] = number;
+            for (int i = 2; i <= N; i++)
+                subordinates[Integer.parseInt(tokens.nextToken())].add(i);
+
+            ranges = new Range[N + 1];
+            for (int i = 1; i <= N; i++)
+                ranges[i] = new Range(0, 0);
+            euilerTour(1, 1);
+
+            int height = (int) (Math.ceil(Math.log(N) / Math.log(2)));
+            leaf = (int) Math.pow(2, height);
+            segmentTree = new MinMax[leaf * 2];
+            remainder = new int[leaf * 2];
+
+            tokens = new StringTokenizer(reader.readLine());
+            for (int i = 1; i <= N; i++) {
+                int salary = Integer.parseInt(tokens.nextToken());
+                segmentTree[leaf + ranges[i].start - 1] = new MinMax(salary, salary);
             }
 
+            for (int i = leaf + N; i < leaf * 2; i++)
+                segmentTree[i] = new MinMax(Integer.MAX_VALUE, Integer.MIN_VALUE);
 
-            tokens = new StringTokenizer(reader.readLine());
-            for (int j = 1; j <= N; j++)
-                salary[j] = Integer.parseInt(tokens.nextToken());
+            for (int i = leaf - 1; i > 0; i--) {
+                segmentTree[i] = new MinMax(Math.min(segmentTree[i * 2].min, segmentTree[i * 2 + 1].min),
+                        Math.max(segmentTree[i * 2].max, segmentTree[i * 2 + 1].max));
+            }
 
             tokens = new StringTokenizer(reader.readLine());
             int Q = Integer.parseInt(tokens.nextToken());
-            for (int j = 0; j < Q; j++) {
+            while (0 < Q--) {
                 tokens = new StringTokenizer(reader.readLine());
-                Queue<Integer> queue = new LinkedList<Integer>();
-                switch (tokens.nextToken()) {
+                int number;
+                switch(tokens.nextToken()) {
                     case "Q":
-                        MinMax temp = getMinMax(Integer.parseInt(tokens.nextToken()));
-                        System.out.println(temp.max - temp.min);
+                        number = Integer.parseInt(tokens.nextToken());
+                        int min = getMin(1, 1, leaf, ranges[number].start, ranges[number].end);
+                        int max = getMax(1, 1, leaf, ranges[number].start, ranges[number].end);
+                        System.out.println(Integer.toString(max - min));
                         break;
                     case "R":
-                        int number = Integer.parseInt(tokens.nextToken());
-                        int amount = Integer.parseInt(tokens.nextToken());
-                        queue.add(number);
-                        while (!queue.isEmpty()) {
-                            salary[queue.peek()] = salary[queue.peek()] + amount;
-                            if (min[queue.peek()] != 0) {
-                                min[queue.peek()] = min[queue.peek()] + amount;
-                                max[queue.peek()] = max[queue.peek()] + amount;
-                            }
-
-                            queue.addAll(subordinates[queue.peek()]);
-                            queue.remove();
-                        }
-
-                        while (supervisors[number] != 0 && min[supervisors[number]] != 0) {
-                            boolean done = true;
-                            number = supervisors[number];
-                            min[number] = salary[number];
-                            max[number] = salary[number];
-                            for (int k : subordinates[number])
-                            {
-                                if (min[k] == 0)
-                                    continue;
-                                if (min[number] > min[k])
-                                    min[number] = min[k];
-                                if (max[number] < max[k])
-                                    max[number] = max[k];
-                            }
-                        }
+                        number = Integer.parseInt(tokens.nextToken());
+                        increaseSalary(1, 1, leaf, ranges[number].start, ranges[number].end, Integer.parseInt(tokens.nextToken()));
                         break;
                 }
             }
         }
     }
 
-    static MinMax getMinMax(int number) {
-        if (subordinates[number].size() == 0) {
-            min[number] = salary[number];
-            max[number] = salary[number];
-            return new MinMax(salary[number], salary[number]);
+    static void increaseSalary(int node, int left, int right, int start, int end, int change) {
+        propagate(node);
+
+        if (right < start || end < left)
+            return;
+
+        if (start <= left && right <= end) {
+            remainder[node] = change;
+            propagate(node);
+            return;
         }
 
-        if (min[number] != 0)
-            return new MinMax(min[number], max[number]);
+        increaseSalary(node * 2, left, (left + right) / 2, start, end, change);
+        increaseSalary(node * 2 + 1, (left + right) / 2 + 1, right, start, end, change);
 
-        MinMax result = new MinMax(salary[number], salary[number]);
-        for (Integer i : subordinates[number]) {
-            MinMax temp = getMinMax(i);
-            if (temp.min < result.min)
-                result.min = temp.min;
-            if (temp.max > result.max)
-                result.max = temp.max;
+        segmentTree[node].min = Math.min(segmentTree[node * 2].min, segmentTree[node * 2 + 1].min);
+        segmentTree[node].max = Math.max(segmentTree[node * 2].max, segmentTree[node * 2 + 1].max);
+    }
+
+    static void propagate(int node) {
+        if (remainder[node] == 0)
+            return;
+
+        segmentTree[node].min = segmentTree[node].min + remainder[node];
+        segmentTree[node].max = segmentTree[node].max + remainder[node];
+        if (node < leaf) {
+            remainder[node * 2] = remainder[node * 2] + remainder[node];
+            remainder[node * 2 + 1] = remainder[node * 2 + 1] + remainder[node];
         }
-        min[number] = result.min;
-        max[number] = result.max;
-        return result;
+        remainder[node] = 0;
+    }
+
+    static int getMin(int node, int left, int right, int start, int end) {
+        propagate(node);
+
+        if (right < start || end < left)
+            return Integer.MAX_VALUE;
+        if (start <= left && right <= end)
+            return segmentTree[node].min;
+
+        return Math.min(
+                getMin(node * 2, left, (left + right) / 2, start, end),
+                getMin(node * 2 + 1, (left + right) / 2 + 1, right, start, end) );
+    }
+
+    static int getMax(int node, int left, int right, int start, int end) {
+        propagate(node);
+
+        if (right < start || end < left)
+            return Integer.MIN_VALUE;
+        if (start <= left && right <= end)
+            return segmentTree[node].max;
+
+        return Math.max(
+                getMax(node * 2, left, (left + right) / 2, start, end),
+                getMax(node * 2 + 1, (left + right) / 2 + 1, right, start, end) );
+    }
+
+    static int euilerTour(int employee, int start) {
+        ranges[employee].start = start;
+        ranges[employee].end = start;
+
+        for (Integer subordinate : subordinates[employee])
+            ranges[employee].end = euilerTour(subordinate, ranges[employee].end + 1);
+
+        return ranges[employee].end;
+    }
+
+    static class Range {
+        int start;
+        int end;
+
+        public Range(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
     }
 
     static class MinMax {
